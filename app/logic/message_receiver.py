@@ -106,7 +106,7 @@ def handle_transfer(db_session: Session, transfer: TransferExtraction, sender: s
         db_session.close()
 
 
-async def handle_image_message(image: KapsoImage, sender: str) -> None:
+async def handle_image_message(db_session: Session, image: KapsoImage, sender: str) -> None:
     """Handle an image message from Kapso.
     
     This function:
@@ -115,6 +115,7 @@ async def handle_image_message(image: KapsoImage, sender: str) -> None:
     3. Routes to the appropriate handler
     
     Args:
+        db_session: Database session
         image: KapsoImage with link to the image
         sender: Phone number of the user who sent the image
     """
@@ -123,7 +124,7 @@ async def handle_image_message(image: KapsoImage, sender: str) -> None:
     if ocr_result.document_type == ReceiptDocumentType.RECEIPT:
         handle_receipt(db_session, ocr_result.receipt, sender)
     elif ocr_result.document_type == ReceiptDocumentType.TRANSFER:
-        handle_transfer(db_session, ocr_result.transfer)
+        handle_transfer(db_session, ocr_result.transfer, sender)
 
 
 async def handle_text_message(db_session: Session, message: KapsoTextMessage, sender: str) -> None:

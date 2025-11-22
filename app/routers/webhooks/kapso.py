@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, sessionmaker
@@ -31,6 +33,6 @@ def get_sync_session() -> Session:
 def kapso_webhook(request: Request, payload: KapsoWebhookMessageReceived):
     db_session = db_manager.db_session()
     if payload.message.is_image():
-        handle_image_message(db_session, payload.message.image, payload.message.sender)
+        asyncio.run(handle_image_message(db_session, payload.message.image, payload.message.sender))
     elif payload.message.is_text():
-        handle_text_message(db_session, payload.message.text, payload.message.sender)
+        asyncio.run(handle_text_message(db_session, payload.message.text, payload.message.sender))
