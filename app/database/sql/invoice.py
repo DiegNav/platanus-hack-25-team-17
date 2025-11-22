@@ -12,7 +12,7 @@ def create_invoice_with_items(
     user = get_user_by_phone_number(db_session, sender)
     session = get_active_session_by_user_id(db_session, user.id)
     invoice = Invoice(
-        description=receipt.description,
+        description=receipt.merchant,
         total=receipt.total_amount,
         pending_amount=receipt.total_amount,
         payer_id=user.id,

@@ -1,5 +1,4 @@
-import os
-from models.kapso import (
+from app.models.kapso import (
     KapsoBody,
     KapsoTextMessage,
     KapsoMessageType,
@@ -11,20 +10,20 @@ from models.kapso import (
     KapsoRow,
     KapsoSection,
 )
+from app.config import settings
 import requests
-
-API_KEY = os.getenv("KAPSO_API_KEY")
-URL = os.getenv("KAPSO_URL")
-KAPSO_PHONE_NUMBER_ID = os.getenv("KAPSO_PHONE_NUMBER_ID")
 
 
 def send_kapso_request(endpoint: str, body: KapsoBody, method: str = "POST") -> None:
-    url = f"{URL}/{KAPSO_PHONE_NUMBER_ID}/{endpoint}"
+    if not settings.KAPSO_URL or not settings.KAPSO_PHONE_NUMBER_ID:
+        raise ValueError("KAPSO_URL and KAPSO_PHONE_NUMBER_ID must be configured")
+    
+    url = f"{settings.KAPSO_URL}/{settings.KAPSO_PHONE_NUMBER_ID}/{endpoint}"
     headers = {
-        "X-API-Key": API_KEY,
+        "X-API-Key": settings.KAPSO_API_KEY,
         "Content-Type": "application/json",
     }
-    response = requests.request(method, url, headers=headers, data=body.dict())
+    response = requests.request(method, url, headers=headers, data=body.model_dump())
     response.raise_for_status()
 
 

@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"
 
     KAPSO_PHONE_NUMBER: str | None = None
+    KAPSO_API_KEY: str | None = None
+    KAPSO_URL: str | None = None
+    KAPSO_PHONE_NUMBER_ID: str | None = None
 
     # Server
     HOST: str = "0.0.0.0"

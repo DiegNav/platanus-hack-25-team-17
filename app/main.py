@@ -3,15 +3,17 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 from app.config import settings
 from app.core.logging import setup_logging
 from app.database import db_manager
+from app.routers.deps import get_db
 from app.middleware.error_handler import error_handler_middleware
 from app.middleware.logging_middleware import logging_middleware
+from app.routers.webhooks.kapso import router as kapso_router
 
 # Setup logging
 setup_logging()
@@ -54,6 +56,7 @@ app.add_middleware(
 app.middleware("http")(logging_middleware)
 app.middleware("http")(error_handler_middleware)
 
+app.include_router(kapso_router, dependencies=[Depends(get_db)])
 
 # Scalar documentation endpoint
 @app.get("/docs", include_in_schema=False)
