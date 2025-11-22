@@ -10,11 +10,7 @@ from enum import Enum
 from pydantic import BaseModel
 
 from app.config import settings
-from app.models.receipt import (
-    DocumentExtraction,
-    ReceiptExtraction,
-    TransferExtraction,
-)
+from app.models.receipt import DocumentExtraction, ReceiptExtraction, TransferExtraction
 
 logger = logging.getLogger(__name__)
 
