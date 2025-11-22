@@ -92,7 +92,7 @@ async def download_image_from_url(image_url: str) -> tuple[bytes, str]:
         RuntimeError: If HTTP request fails
     """
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             logger.info(f"Downloading image from URL: {image_url}")
             response = await client.get(image_url)
             response.raise_for_status()

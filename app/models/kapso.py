@@ -16,7 +16,7 @@ class KapsoInteractiveType(StrEnum):
 
 
 class BaseKapsoBody(BaseModel):
-    messaging_product: str = Literal["whatsapp"]
+    messaging_product: Literal["whatsapp"] = "whatsapp"
     to: str
     type: KapsoMessageType
 
@@ -31,7 +31,7 @@ class KapsoReply(BaseModel):
 
 
 class KapsoButton(BaseModel):
-    type: str = Literal["reply"]
+    type: Literal["reply"] = "reply"
     reply: KapsoReply
 
 

@@ -1,4 +1,6 @@
 import asyncio
+
+from sqlalchemy.exc import NoResultFound
 from app.services.ocr_service import download_image_from_url, scan_receipt
 from app.models.kapso import KapsoImage
 from app.models.receipt import ReceiptExtraction, TransferExtraction, ReceiptDocumentType
@@ -18,6 +20,9 @@ def handle_receipt(db_session: Session, receipt: ReceiptExtraction, sender: str)
         send_text_message(sender, build_session_id_link(invoice.session_id))
     except MultipleResultsFound:
         send_text_message(sender, TOO_MANY_ACTIVE_SESSIONS_MESSAGE)
+        return
+    except NoResultFound:
+        send_text_message(sender, "No hay una sesión activa para este usuario.")
         return
 
 

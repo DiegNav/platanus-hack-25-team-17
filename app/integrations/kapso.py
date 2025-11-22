@@ -23,7 +23,7 @@ def send_kapso_request(endpoint: str, body: KapsoBody, method: str = "POST") -> 
         "X-API-Key": settings.KAPSO_API_KEY,
         "Content-Type": "application/json",
     }
-    response = requests.request(method, url, headers=headers, data=body.model_dump())
+    response = requests.request(method, url, headers=headers, json=body.model_dump())
     response.raise_for_status()
 
 

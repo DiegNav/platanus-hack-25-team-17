@@ -21,11 +21,10 @@ async def get_db() -> AsyncGenerator[AsyncSession]:
             return result.scalars().all()
         ```
     """
-    async with db_manager.sessionmaker() as session:
+    session_maker = db_manager.sessionmaker()
+    async with session_maker() as session:
         try:
             yield session
         except Exception:
             await session.rollback()
             raise
-        finally:
-            await session.close()
