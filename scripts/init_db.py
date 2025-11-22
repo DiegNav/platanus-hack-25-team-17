@@ -65,10 +65,17 @@ async def init_db() -> None:
                 "status": SessionStatus.ACTIVE,
             }
             session1 = await session_crud.create(db, obj_in=session1_data)
-            # Add users to session
-            session1.users = [alice, bob, charlie]
+            # Add users to session using association table
+            from app.database.models.session import session_users
+            from sqlalchemy import insert
+            await db.execute(
+                insert(session_users).values([
+                    {"session_id": session1.id, "user_id": alice.id},
+                    {"session_id": session1.id, "user_id": bob.id},
+                    {"session_id": session1.id, "user_id": charlie.id},
+                ])
+            )
             await db.commit()
-            await db.refresh(session1)
             print(f"  Created session: {session1.description} (ID: {session1.id})")
 
             session2_data = {
@@ -78,9 +85,15 @@ async def init_db() -> None:
                 "status": SessionStatus.ACTIVE,
             }
             session2 = await session_crud.create(db, obj_in=session2_data)
-            session2.users = [bob, charlie, diana, eve]
+            await db.execute(
+                insert(session_users).values([
+                    {"session_id": session2.id, "user_id": bob.id},
+                    {"session_id": session2.id, "user_id": charlie.id},
+                    {"session_id": session2.id, "user_id": diana.id},
+                    {"session_id": session2.id, "user_id": eve.id},
+                ])
+            )
             await db.commit()
-            await db.refresh(session2)
             print(f"  Created session: {session2.description} (ID: {session2.id})")
 
             session3_data = {
@@ -90,9 +103,13 @@ async def init_db() -> None:
                 "status": SessionStatus.CLOSED,
             }
             session3 = await session_crud.create(db, obj_in=session3_data)
-            session3.users = [charlie, diana]
+            await db.execute(
+                insert(session_users).values([
+                    {"session_id": session3.id, "user_id": charlie.id},
+                    {"session_id": session3.id, "user_id": diana.id},
+                ])
+            )
             await db.commit()
-            await db.refresh(session3)
             print(f"  Created session: {session3.description} (ID: {session3.id})")
 
             print("\nCreating example invoices...")
