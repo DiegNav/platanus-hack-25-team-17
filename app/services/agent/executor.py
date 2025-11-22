@@ -12,9 +12,7 @@ from app.services.agent.schemas import AgentActionSchema
 logger = logging.getLogger(__name__)
 
 
-async def execute_action(
-    db: AsyncSession, action_schema: AgentActionSchema
-) -> Any:
+async def execute_action(db: AsyncSession, action_schema: AgentActionSchema) -> Any:
     """Execute the action determined by the agent.
 
     This function routes the action to the appropriate handler based on the
@@ -42,44 +40,11 @@ async def execute_action(
     return await handler(db, action_schema)
 
 
-async def process_and_execute(
-    db: AsyncSession, user_text: str
-) -> Any:
-    """Process user text and execute the corresponding action in the database.
+def process_and_execute(db: AsyncSession, user_text: str) -> Any:
+    action_schema = process_user_command(user_text)
 
-    This is the main entry point that combines:
-    1. Processing the user's natural language command
-    2. Executing the determined action using the action handlers mapping
+    result = execute_action(db, action_schema)
 
-    Args:
-        db: Database session
-        user_text: User's command in natural language
-
-    Returns:
-        Result of the executed action (Session, Item, etc.)
-
-    Raises:
-        ValueError: If API key is missing, action is not supported, or required data is missing
-        RuntimeError: If OpenAI API returns an error or database operation fails
-
-    Example:
-        ```python
-        from app.routers.deps import get_db
-
-        async with get_db() as db:
-            result = await process_and_execute(db, "Crear sesión para cena con amigos")
-            # result is a Session instance
-        ```
-    """
-    # Step 1: Process user command to get action schema
-    action_schema = await process_user_command(user_text)
-
-    # Step 2: Execute the action using the mapping
-    result = await execute_action(db, action_schema)
-
-    logger.info(
-        f"Successfully processed and executed action: {action_schema.action.value}"
-    )
+    logger.info(f"Successfully processed and executed action: {action_schema.action.value}")
 
     return result
-

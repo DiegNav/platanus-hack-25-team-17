@@ -32,6 +32,7 @@ ACCIONES DISPONIBLES:
            → description: "cena de cumpleaños"
          * "Empezar nueva sesión: viaje a la playa"
            → description: "viaje a la playa"
+    * Si no se menciona una descripción, usa el nombre del usuario como descripción de la sesión
 
 2. CLOSE_SESSION (cerrar_sesion):
    - Descripción: Cerrar o finalizar una sesión existente
@@ -320,4 +321,3 @@ INSTRUCCIONES:
 - Extrae los datos necesarios según la acción
 - Devuelve la respuesta estructurada según el schema proporcionado
 """
-

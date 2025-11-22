@@ -10,9 +10,7 @@ from app.database.models import Item, Session, User
 logger = logging.getLogger(__name__)
 
 
-async def create_session_in_db(
-    db: AsyncSession, description: str
-) -> Session:
+async def create_session_in_db(db: AsyncSession, description: str) -> Session:
     """Create a new session in the database.
 
     Args:
@@ -68,9 +66,7 @@ async def close_session_in_db(
 
     # Search by description (case-insensitive partial match)
     if session_description:
-        result = await db.execute(
-            select(Session).where(Session.description.ilike(f"%{session_description}%"))
-        )
+        result = await db.execute(select(Session).where(Session.description.ilike(f"%{session_description}%")))
         sessions = result.scalars().all()
         if not sessions:
             raise ValueError(f"Session with description containing '{session_description}' not found")
@@ -119,9 +115,7 @@ async def assign_item_to_user_in_db(
         if not user:
             raise ValueError(f"User with ID {user_id} not found")
     elif user_name:
-        result = await db.execute(
-            select(User).where(User.name.ilike(f"%{user_name}%"))
-        )
+        result = await db.execute(select(User).where(User.name.ilike(f"%{user_name}%")))
         users = result.scalars().all()
         if not users:
             raise ValueError(f"User with name containing '{user_name}' not found")
@@ -146,9 +140,7 @@ async def assign_item_to_user_in_db(
         # We can only search by invoice_id and hope there's a single item
         # or the user must provide item_id
         if invoice_id:
-            result = await db.execute(
-                select(Item).where(Item.invoice_id == invoice_id)
-            )
+            result = await db.execute(select(Item).where(Item.invoice_id == invoice_id))
             items = result.scalars().all()
             if not items:
                 raise ValueError(
@@ -189,4 +181,3 @@ async def assign_item_to_user_in_db(
     )
 
     return item
-

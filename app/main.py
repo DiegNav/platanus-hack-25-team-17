@@ -12,6 +12,8 @@ from app.core.logging import setup_logging
 from app.database import db_manager
 from app.middleware.error_handler import error_handler_middleware
 from app.middleware.logging_middleware import logging_middleware
+from app.routers.webhooks.kapso import router as kapso_webhook_router
+
 
 # Setup logging
 setup_logging()

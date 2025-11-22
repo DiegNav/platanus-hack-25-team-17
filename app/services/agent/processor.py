@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage
 
 from app.services.agent.models import initialize_openai_model
 from app.services.agent.prompt import get_agent_prompt
-from app.services.agent.schemas import AgentActionSchema
+from app.models.text_agent import AgentActionSchema
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +35,7 @@ async def process_user_command(user_text: str) -> AgentActionSchema:
         prompt = get_agent_prompt()
 
         # Create message with user text
-        message = HumanMessage(
-            content=f"{prompt}\n\nTEXTO DEL USUARIO:\n{user_text}"
-        )
+        message = HumanMessage(content=f"{prompt}\n\nTEXTO DEL USUARIO:\n{user_text}")
 
         logger.info(f"Processing user command: {user_text[:100]}...")
 
@@ -60,4 +58,3 @@ async def process_user_command(user_text: str) -> AgentActionSchema:
     except Exception as e:
         logger.error(f"Error calling OpenAI API via LangChain: {str(e)}", exc_info=True)
         raise RuntimeError(f"Failed to process command with OpenAI: {str(e)}") from e
-
