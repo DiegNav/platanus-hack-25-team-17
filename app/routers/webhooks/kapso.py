@@ -7,13 +7,11 @@ router = APIRouter(prefix="/webhooks/kapso")
 
 
 @router.post("/received", status_code=200)
-def kapso_received_webhook(request: Request, payload: KapsoWebhookMessageReceived):
-    try:
-        db_session = db_manager.db_session()
-        check_existing_user_logic(db_session, payload.conversation)
-        # if payload.message.is_image():
-        #   handle_image_message(db_session, payload.message.image, payload.message.sender)
-        # elif payload.message.is_text():
-        #     handle_text_message(db_session, payload.message.text, payload.message.sender)
-    finally:
-        return Response(status_code=200)
+async def kapso_received_webhook(request: Request, payload: KapsoWebhookMessageReceived):
+    async with db_manager.sessionmaker()() as db_session:
+        await check_existing_user_logic(db_session, payload.conversation)
+        if payload.message.is_image():
+            await handle_image_message(db_session, payload.message.image, payload.message.sender)
+        elif payload.message.is_text():
+            await handle_text_message(db_session, payload.message.text, payload.message.sender)
+    return Response(status_code=200)
