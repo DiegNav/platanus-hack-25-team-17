@@ -86,12 +86,18 @@ class KapsoImage(BaseModel):
     link: str
 
 
+class KapsoConversation(BaseModel):
+    contact_name: str
+    phone_number: str
+
+
 class KapsoMessage(BaseModel):
     id: str
     sender: str = Field(..., alias="from")
     received_at: datetime = datetime.now(tz=timezone.utc).replace(tzinfo=None)
     text: KapsoBody | None = None
     image: KapsoImage | None = None
+    conversation: KapsoConversation
 
     def is_image(self) -> bool:
         return self.image is not None
