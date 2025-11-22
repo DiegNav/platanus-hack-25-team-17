@@ -1,5 +1,3 @@
-import asyncio
-
 from sqlalchemy.exc import NoResultFound
 from app.services.ocr_service import download_image_from_url, scan_receipt
 from app.models.kapso import KapsoImage, KapsoTextMessage, KapsoConversation
