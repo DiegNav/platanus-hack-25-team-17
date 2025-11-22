@@ -8,12 +8,12 @@ from app.database.sql.invoice import create_invoice_with_items
 from app.integrations.kapso import send_text_message
 from sqlalchemy.orm.exc import MultipleResultsFound
 from app.utils.messages import TOO_MANY_ACTIVE_SESSIONS_MESSAGE, build_invoice_created_message, build_session_id_link
-from app.database.sql.helpers import get_sync_session
 from app.database.sql.user import get_user_by_phone_number
 from app.database.sql.payment import get_pending_items_by_user_id, process_payment
 from app.services.agent.processor import process_user_command
 from app.models.text_agent import ActionType
 from app.database.sql.session import create_session
+from app.routers.webhooks.kapso import get_sync_session
 from sqlalchemy.orm import Session
 
 
@@ -46,7 +46,8 @@ def handle_transfer(db_session: Session, transfer: TransferExtraction, sender: s
         transfer: TransferExtraction with amount, recipient, description
         sender: Phone number of the user making the transfer
     """
-    with get_sync_session() as db_session:
+    db_session = get_sync_session()
+    try:
         # Get user by phone number
         user = get_user_by_phone_number(db_session, sender)
         if not user:
@@ -89,16 +90,20 @@ def handle_transfer(db_session: Session, transfer: TransferExtraction, sender: s
                 items_to_pay=pending_items,
             )
             
+            db_session.commit()
             send_text_message(
                 sender,
                 f"✅ Pago procesado exitosamente por ${transfer_amount:.2f}. "
                 f"Se han marcado {len(pending_items)} item(s) como pagados."
             )
         except Exception as e:
+            db_session.rollback()
             send_text_message(
                 sender,
                 f"❌ Error al procesar el pago: {str(e)}. Por favor, intenta nuevamente."
             )
+    finally:
+        db_session.close()
 
 
 async def handle_image_message(image: KapsoImage, sender: str) -> None:
