@@ -41,3 +41,4 @@ class Session(Base):
     # Relationships
     users: Mapped[list["User"]] = relationship(secondary=session_users, back_populates="sessions")
     owner: Mapped["User"] = relationship("User", back_populates="sessions", foreign_keys=[owner_id])
+    invoices: Mapped[list["Invoice"]] = relationship("Invoice", back_populates="session")
