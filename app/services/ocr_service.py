@@ -8,7 +8,7 @@ import google.generativeai as genai
 import httpx
 
 from app.config import settings
-from app.schemas.receipt import DocumentExtraction, ReceiptExtraction, TransferExtraction
+from app.models.receipt import DocumentExtraction, ReceiptExtraction, TransferExtraction
 
 logger = logging.getLogger(__name__)
 
@@ -237,9 +237,7 @@ async def scan_receipt_with_gemini(
         # Validate document type
         document_type = response_data.get("document_type", "").lower()
         if document_type not in ["receipt", "transfer"]:
-            raise ValueError(
-                f"Invalid document_type: {document_type}. Must be 'receipt' or 'transfer'"
-            )
+            raise ValueError(f"Invalid document_type: {document_type}. Must be 'receipt' or 'transfer'")
 
         # Create DocumentExtraction based on type
         if document_type == "receipt":
@@ -261,8 +259,7 @@ async def scan_receipt_with_gemini(
                 transfer=transfer_data,
             )
             logger.info(
-                f"Successfully extracted transfer: Recipient={transfer_data.recipient}, "
-                f"Amount=${transfer_data.amount}"
+                f"Successfully extracted transfer: Recipient={transfer_data.recipient}, Amount=${transfer_data.amount}"
             )
 
         return document_extraction
@@ -273,4 +270,3 @@ async def scan_receipt_with_gemini(
     except Exception as e:
         logger.error(f"Error calling Gemini API: {str(e)}", exc_info=True)
         raise RuntimeError(f"Failed to process receipt with Gemini: {str(e)}") from e
-
