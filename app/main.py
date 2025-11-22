@@ -56,7 +56,8 @@ app.add_middleware(
 app.middleware("http")(logging_middleware)
 app.middleware("http")(error_handler_middleware)
 
-app.include_router(kapso_router, dependencies=[Depends(get_db)])
+app.include_router(kapso_router)
+
 
 # Scalar documentation endpoint
 @app.get("/docs", include_in_schema=False)

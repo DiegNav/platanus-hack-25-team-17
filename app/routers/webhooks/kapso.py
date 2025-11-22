@@ -10,10 +10,10 @@ router = APIRouter(prefix="/webhooks/kapso")
 def kapso_received_webhook(request: Request, payload: KapsoWebhookMessageReceived):
     try:
         db_session = db_manager.db_session()
-        check_existing_user_logic(db_session, payload.message.conversation)
-        if payload.message.is_image():
-            handle_image_message(db_session, payload.message.image, payload.message.sender)
-        elif payload.message.is_text():
-            handle_text_message(db_session, payload.message.text, payload.message.sender)
+        check_existing_user_logic(db_session, payload.conversation)
+        # if payload.message.is_image():
+        #   handle_image_message(db_session, payload.message.image, payload.message.sender)
+        # elif payload.message.is_text():
+        #     handle_text_message(db_session, payload.message.text, payload.message.sender)
     finally:
         return Response(status_code=200)
