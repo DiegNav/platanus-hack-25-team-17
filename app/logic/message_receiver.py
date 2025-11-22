@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy.orm.exc import NoResultFound
 from app.services.ocr_service import download_image_from_url, scan_receipt
 from app.models.kapso import KapsoImage, KapsoTextMessage, KapsoConversation
@@ -14,9 +15,11 @@ from app.database.sql.user import get_user_by_phone_number, create_user
 
 
 def check_existing_user_logic(db_session: Session, conversation: KapsoConversation) -> None:
+    logging.info(f"Checking existing user for conversation: {conversation}")
     current_user = get_user_by_phone_number(db_session, conversation.phone_number)
+    logging.info(f"Current user: {current_user}")
     if not current_user:
-        create_user(db_session, conversation.phone_number)
+        create_user(db_session, conversation.phone_number, conversation.contact_name)
 
 
 def handle_receipt(db_session: Session, receipt: ReceiptExtraction, sender: str) -> None:
