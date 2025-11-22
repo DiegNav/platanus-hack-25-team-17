@@ -1,13 +1,13 @@
 """Database configuration and session management."""
 
-from sqlalchemy import MetaData
+from sqlalchemy import Engine, MetaData, create_engine
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import settings
 
@@ -48,6 +48,8 @@ class DatabaseManager:
         """Initialize database manager."""
         self.engine: AsyncEngine | None = None
         self._sessionmaker: async_sessionmaker[AsyncSession] | None = None
+        self.sync_engine: Engine | None = None
+        self._sync_sessionmaker: sessionmaker[Session] | None = None
 
     async def connect(self) -> None:
         """Create database engine and session factory.
@@ -64,6 +66,18 @@ class DatabaseManager:
             class_=AsyncSession,
             expire_on_commit=False,
         )
+        # Create synchronous engine and sessionmaker
+        sync_url = str(settings.DATABASE_URL)
+        self.sync_engine = create_engine(
+            sync_url,
+            echo=settings.DB_ECHO,
+            pool_pre_ping=True,
+        )
+        self._sync_sessionmaker = sessionmaker(
+            self.sync_engine,
+            class_=Session,
+            expire_on_commit=False,
+        )
 
     async def disconnect(self) -> None:
         """Dispose database engine and close all connections.
@@ -72,6 +86,8 @@ class DatabaseManager:
         """
         if self.engine:
             await self.engine.dispose()
+        if self.sync_engine:
+            self.sync_engine.dispose()
 
     def sessionmaker(self) -> async_sessionmaker[AsyncSession]:
         """Get the session factory.
@@ -85,6 +101,27 @@ class DatabaseManager:
         if self._sessionmaker is None:
             raise RuntimeError("Database is not connected. Call connect() first.")
         return self._sessionmaker
+
+    def db_session(self) -> Session:
+        """Get a synchronous database session.
+
+        Returns:
+            Session: Synchronous database session
+
+        Raises:
+            RuntimeError: If database is not connected
+
+        Example:
+            ```python
+            db_session = db_manager.db_session()
+            result = db_session.query(User).all()
+            db_session.commit()
+            db_session.close()
+            ```
+        """
+        if self._sync_sessionmaker is None:
+            raise RuntimeError("Database is not connected. Call connect() first.")
+        return self._sync_sessionmaker()
 
 
 # Global database manager instance

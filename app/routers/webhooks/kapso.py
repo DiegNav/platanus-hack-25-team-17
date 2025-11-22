@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
 from app.models.kapso import KapsoWebhookMessageReceived
-from app.logic.message_receiver import handle_image_message
-from app.routers.deps import get_db
+from app.logic.message_receiver import handle_image_message, handle_text_message
+from app.database import db_manager
 from app.config import settings
 
 router = APIRouter(prefix="/webhooks/kapso")
@@ -28,21 +28,9 @@ def get_sync_session() -> Session:
 
 
 @router.post("/received", status_code=200)
-async def kapso_webhook(
-    request: Request,
-    payload: KapsoWebhookMessageReceived,
-    db: AsyncSession = Depends(get_db),
-):
+def kapso_webhook(request: Request, payload: KapsoWebhookMessageReceived):
+    db_session = db_manager.db_session()
     if payload.message.is_image():
-        # Create sync session for synchronous functions
-        sync_db = get_sync_session()
-        try:
-            await handle_image_message(
-                sync_db,
-                payload.message.image,
-                payload.message.sender,
-            )
-        finally:
-            sync_db.close()
+        handle_image_message(db_session, payload.message.image, payload.message.sender)
     elif payload.message.is_text():
-        pass
+        handle_text_message(db_session, payload.message.text, payload.message.sender)
