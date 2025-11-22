@@ -4,3 +4,10 @@ from app.database.models.user import User
 
 def get_user_by_phone_number(db_session: Session, phone_number: str) -> User | None:
     return db_session.query(User).filter(User.phone_number == phone_number).first()
+
+
+def create_user(db_session: Session, phone_number: str, name: str) -> User:
+    user = User(phone_number=phone_number, name=name)
+    db_session.add(user)
+    db_session.commit()
+    return user

@@ -2,7 +2,7 @@ import asyncio
 
 from sqlalchemy.exc import NoResultFound
 from app.services.ocr_service import download_image_from_url, scan_receipt
-from app.models.kapso import KapsoImage, KapsoTextMessage
+from app.models.kapso import KapsoImage, KapsoTextMessage, KapsoConversation
 from app.models.receipt import ReceiptExtraction, TransferExtraction, ReceiptDocumentType
 from app.database.sql.invoice import create_invoice_with_items
 from app.integrations.kapso import send_text_message
@@ -12,6 +12,13 @@ from app.services.agent.processor import process_user_command
 from app.models.text_agent import ActionType
 from app.database.sql.session import create_session
 from sqlalchemy.orm import Session
+from app.database.sql.user import get_user_by_phone_number, create_user
+
+
+def check_existing_user_logic(db_session: Session, conversation: KapsoConversation) -> None:
+    current_user = get_user_by_phone_number(db_session, conversation.phone_number)
+    if not current_user:
+        create_user(db_session, conversation.phone_number)
 
 
 def handle_receipt(db_session: Session, receipt: ReceiptExtraction, sender: str) -> None:
