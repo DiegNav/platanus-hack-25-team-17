@@ -18,11 +18,14 @@ def get_pending_items_by_user_id(db_session: Session, user_id: int) -> list[Item
     Returns:
         List of items where the user is the debtor and is_paid is False
     """
+    from app.database.models.user import User
+    
     return (
         db_session.query(Item)
         .join(Invoice, Item.invoice_id == Invoice.id)
         .join(SessionModel, Invoice.session_id == SessionModel.id)
         .join(session_users, SessionModel.id == session_users.c.session_id)
+        .join(User, Item.debtor_id == User.id)
         .filter(
             and_(
                 Item.debtor_id == user_id,

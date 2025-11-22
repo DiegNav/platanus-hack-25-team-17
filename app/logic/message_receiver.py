@@ -13,7 +13,6 @@ from app.database.sql.payment import get_pending_items_by_user_id, process_payme
 from app.services.agent.processor import process_user_command
 from app.models.text_agent import ActionType
 from app.database.sql.session import create_session
-from app.routers.webhooks.kapso import get_sync_session
 from sqlalchemy.orm import Session
 
 
@@ -46,6 +45,7 @@ def handle_transfer(db_session: Session, transfer: TransferExtraction, sender: s
         transfer: TransferExtraction with amount, recipient, description
         sender: Phone number of the user making the transfer
     """
+    from app.routers.webhooks.kapso import get_sync_session
     db_session = get_sync_session()
     try:
         # Get user by phone number
