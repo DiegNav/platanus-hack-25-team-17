@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 
 from app.config import settings
 from app.core.logging import setup_logging
+from app.database import db_manager
 from app.routers.deps import get_db
 from app.middleware.error_handler import error_handler_middleware
 from app.middleware.logging_middleware import logging_middleware
