@@ -2,6 +2,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, select
+from sqlalchemy.orm import selectinload
 from app.database.models.payment import Payment
 from app.database.models.item import Item
 from app.database.models.invoice import Invoice
@@ -18,17 +19,24 @@ async def get_pending_items_by_user_id(db_session: AsyncSession, user_id: int) -
     Returns:
         List of items where the user is the debtor and is_paid is False
     """
+    from sqlalchemy import or_
+    
     result = await db_session.execute(
         select(Item)
+        .options(selectinload(Item.invoice))
         .join(Invoice, Item.invoice_id == Invoice.id)
         .join(SessionModel, Invoice.session_id == SessionModel.id)
-        .join(session_users, SessionModel.id == session_users.c.session_id)
+        .outerjoin(session_users, SessionModel.id == session_users.c.session_id)
         .filter(
             and_(
                 Item.debtor_id == user_id,
                 Item.is_paid == False,
-                session_users.c.user_id == user_id,
                 SessionModel.status == SessionStatus.ACTIVE,
+                # User must be either the owner or in session_users
+                or_(
+                    SessionModel.owner_id == user_id,
+                    session_users.c.user_id == user_id,
+                ),
             )
         )
     )

@@ -136,38 +136,53 @@ async def assign_item_to_user_in_db(
         if not item:
             raise ValueError(f"Item with ID {item_id} not found")
     elif item_description:
-        # Note: Item model doesn't have a description field
-        # We can only search by invoice_id and hope there's a single item
-        # or the user must provide item_id
+        # Search by description - can search in specific invoice or in active session
+        from app.database.models.invoice import Invoice
+        
         if invoice_id:
-            result = await db.execute(select(Item).where(Item.invoice_id == invoice_id))
+            # Search in specific invoice
+            result = await db.execute(
+                select(Item)
+                .where(Item.invoice_id == invoice_id)
+                .where(Item.description.ilike(f"%{item_description}%"))
+            )
             items = result.scalars().all()
             if not items:
                 raise ValueError(
-                    f"No items found in invoice {invoice_id}. "
-                    f"Cannot match by description '{item_description}' as Item model has no description field."
+                    f"No items found in invoice {invoice_id} matching description '{item_description}'."
                 )
-            # If there's only one item in the invoice, we can use it
-            if len(items) == 1:
-                item = items[0]
-                logger.warning(
-                    f"Using single item from invoice {invoice_id} for description '{item_description}'. "
-                    f"Item ID: {item.id}"
-                )
-            else:
-                raise ValueError(
-                    f"Multiple items ({len(items)}) found in invoice {invoice_id}. "
-                    f"Cannot match by description '{item_description}' as Item model has no description field. "
-                    f"Please specify item_id to identify the exact item."
-                )
+            if len(items) > 1:
+                # If multiple items match, prefer unassigned items (debtor_id is None)
+                unassigned = [i for i in items if i.debtor_id is None]
+                if unassigned:
+                    items = unassigned
+                if len(items) > 1:
+                    raise ValueError(
+                        f"Multiple items ({len(items)}) found in invoice {invoice_id} matching description '{item_description}'. "
+                        f"Please specify item_id to identify the exact item."
+                    )
+            item = items[0]
         else:
-            raise ValueError(
-                "Item model does not have a description field. "
-                "Please provide item_id to identify the item, or provide invoice_id "
-                "if the invoice has only one item."
+            # Search in all unassigned items (debtor_id is None) - will be filtered by session later
+            result = await db.execute(
+                select(Item)
+                .where(Item.description.ilike(f"%{item_description}%"))
+                .where(Item.debtor_id.is_(None))
             )
+            items = result.scalars().all()
+            if not items:
+                raise ValueError(
+                    f"No unassigned items found matching description '{item_description}'. "
+                    f"Please provide invoice_id or item_id to identify the exact item."
+                )
+            if len(items) > 1:
+                raise ValueError(
+                    f"Multiple unassigned items ({len(items)}) found matching description '{item_description}'. "
+                    f"Please provide invoice_id or item_id to identify the exact item."
+                )
+            item = items[0]
     else:
-        raise ValueError("Either item_id or (item_description + invoice_id) must be provided")
+        raise ValueError("Either item_id or item_description must be provided")
 
     # Update the item's debtor_id
     item.debtor_id = user.id

@@ -77,15 +77,16 @@ ACCIONES DISPONIBLES:
    - Cuándo usar: Cuando el usuario menciona que alguien paga, consume, es responsable de, o tiene asignado un producto, plato, bebida o servicio específico
    - Palabras clave: "paga", "pago", "pagar", "es de", "lo paga", "paga por", "consumió", "pidió", "tomó", "comió", "asignar", "dar", "atribuir", "responsable de", "es para", "le corresponde a"
    - IMPORTANTE: Si el texto menciona un PRODUCTO/PLATO/BEBIDA (cerveza, pizza, hamburguesa, pasta, postre, etc.) y una PERSONA, es muy probable que sea ASSIGN_ITEM_TO_USER, NO CREATE_SESSION
+   - IMPORTANTE: Si hay múltiples items con la misma descripción en la sesión activa, el sistema asignará automáticamente cualquiera de los items disponibles sin asignar. No es necesario especificar el ID del item en estos casos.
    - Datos a extraer:
-     * item_id (int | None): ID numérico del ítem si el usuario lo menciona explícitamente
+     * item_id (int | None): ID numérico del ítem si el usuario lo menciona explícitamente. Si no se menciona, déjalo null y el sistema buscará items por descripción.
      * user_id (int | None): ID numérico del usuario si el usuario lo menciona explícitamente
-     * user_name (str | None): Nombre del usuario a quien asignar el ítem
-     * invoice_id (int | None): ID de la factura si el usuario lo menciona (útil para identificar el ítem)
-     * item_description (str | None): Descripción del ítem si el usuario la menciona (ej: "hamburguesa", "cerveza", "postre", "pizza", "pasta")
+     * user_name (str | None): Nombre del usuario a quien asignar el ítem. Si no se menciona, se asume que es el usuario que envía el mensaje.
+     * invoice_id (int | None): ID de la factura si el usuario lo menciona (útil para identificar el ítem). Si no se menciona, el sistema buscará en todas las facturas de la sesión activa.
+     * item_description (str | None): Descripción del ítem si el usuario la menciona (ej: "hamburguesa", "cerveza", "postre", "pizza", "pasta"). Si hay múltiples items con la misma descripción, el sistema asignará cualquiera de los disponibles.
        - Ejemplos:
          * "Paga cerveza" o "paga la cerveza"
-           → item_description: "cerveza", user_name: null (si no se menciona nombre, déjalo null)
+           → item_description: "cerveza", user_name: null (si no se menciona nombre, se asigna al usuario que envía el mensaje)
          * "Juan paga cerveza" o "la cerveza la paga Juan"
            → item_description: "cerveza", user_name: "Juan"
          * "María paga la pizza"
@@ -104,7 +105,9 @@ ACCIONES DISPONIBLES:
            → item_description: "hamburguesa", user_name: "Pedro"
          * "El postre es para Ana"
            → item_description: "postre", user_name: "Ana"
-       - Nota: Prioriza IDs numéricos cuando estén disponibles. Si solo hay nombres, usa user_name. Si hay descripción del ítem, usa item_description. Si el texto es muy corto y solo menciona un producto/bebida/plato, es muy probable que sea ASSIGN_ITEM_TO_USER.
+         * "Yo consumí cerveza" o "consumí cerveza"
+           → item_description: "cerveza", user_name: null (se asignará al usuario que envía el mensaje)
+       - Nota: Prioriza IDs numéricos cuando estén disponibles. Si solo hay nombres, usa user_name. Si hay descripción del ítem, usa item_description. Si el texto es muy corto y solo menciona un producto/bebida/plato, es muy probable que sea ASSIGN_ITEM_TO_USER. Si hay múltiples items con la misma descripción, el sistema automáticamente asignará uno de los disponibles sin asignar, no es necesario especificar cuál.
 
 5. UNKNOWN (desconocida):
    - Descripción: Usar cuando el texto no corresponde a ninguna de las acciones disponibles o la intención no es clara
