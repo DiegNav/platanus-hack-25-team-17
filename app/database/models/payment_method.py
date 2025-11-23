@@ -3,7 +3,6 @@
 from app.database.database import Base
 from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database.models.user import User
 
 
 class PaymentMethod(Base):
