@@ -1,4 +1,5 @@
 {
   "project-name": "CoBrot",
-  "project-description-spanish": "CoBrot es una aplicación que permite a los usuarios enviar y recibir pagos de manera fácil y segura mediante WhatsApp"
+  "project-description-spanish": "CoBrot es una aplicación que permite a los usuarios enviar y recibir pagos de manera fácil y segura mediante WhatsApp",
+  "deploy-url": "https://platanus-hack-25-team-17-deploy.vercel.app/"
 }
