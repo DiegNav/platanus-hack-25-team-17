@@ -1,9 +1,12 @@
+import logging
 from fastapi import APIRouter, Request, Response
 from app.models.kapso import KapsoWebhookMessageReceived
 from app.logic.message_receiver import handle_image_message, handle_text_message, check_existing_user_logic
 from app.database import db_manager
 
 router = APIRouter(prefix="/webhooks/kapso")
+
+logger = logging.getLogger(__name__)
 
 
 @router.post("/received", status_code=200)
