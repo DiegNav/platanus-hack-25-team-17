@@ -1,6 +1,6 @@
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, insert, or_
 from app.database.models.session import Session, SessionStatus, session_users
 from app.database.models.user import User
 from app.database.sql.user import get_user_by_phone_number, get_user_by_id
@@ -9,7 +9,7 @@ import uuid
 
 async def get_active_session_by_user_id(db_session: AsyncSession, user_id: int) -> Session | None:
     result = await db_session.execute(
-        select(Session).filter(Session.owner_id == user_id).filter(Session.status == SessionStatus.ACTIVE)
+        select(Session).filter(or_(Session.owner_id == user_id, session_users.c.user_id == user_id)).filter(Session.status == SessionStatus.ACTIVE)
     )
     return result.scalar_one_or_none()
 
@@ -79,6 +79,7 @@ async def close_session(db_session: AsyncSession, session_id: str, user_phone: s
 
     session.status = SessionStatus.CLOSED
     await db_session.commit()
+    await db_session.refresh(session)
     return session
 
 
@@ -87,6 +88,7 @@ async def create_session(db_session: AsyncSession, description: str, owner_numbe
     session = Session(description=description, owner_id=user.id, status=SessionStatus.ACTIVE)
     db_session.add(session)
     await db_session.commit()
+    await db_session.refresh(session)
     return session
 
 
@@ -137,7 +139,11 @@ async def join_session(db_session: AsyncSession, session_id: str, user_phone: st
             pass  # If there's an issue closing, continue
 
     # Add user to target session (many-to-many relationship)
-    target_session.users.append(user)
+    # Use insert directly on the association table to avoid lazy loading issues
+    await db_session.execute(
+        insert(session_users).values(session_id=session_uuid, user_id=user.id)
+    )
     await db_session.commit()
+    await db_session.refresh(target_session)
 
     return target_session, False

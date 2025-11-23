@@ -65,8 +65,6 @@ async def handle_receipt(db_session: AsyncSession, receipt: ReceiptExtraction, s
     try:
         invoice, items = await create_invoice_with_items(db_session, receipt, tip, sender)
         send_text_message(sender, build_invoice_created_message(invoice, items))
-        send_text_message(sender, "Para compartir la sesión de cobro con más personas, comparte el siguiente mensaje:")
-        send_text_message(sender, build_session_id_link(invoice.session_id))
     except MultipleResultsFound:
         send_text_message(sender, TOO_MANY_ACTIVE_SESSIONS_MESSAGE)
         return
@@ -197,7 +195,11 @@ async def handle_text_message(db_session: AsyncSession, message_body: KapsoBody,
 
             try:
                 active_session = await get_active_session_by_user_id(db_session, user.id)
-                session_id = str(active_session.id)
+                if active_session:
+                    session_id = str(active_session.id)
+                else:
+                    send_text_message(sender, "No se pudo encontrar tu sesión activa.")
+                    return
             except (NoResultFound, MultipleResultsFound):
                 send_text_message(sender, "No se pudo encontrar tu sesión activa.")
                 return
