@@ -22,3 +22,8 @@ async def create_user(db_session: AsyncSession, phone_number: str, name: str) ->
     user = User(phone_number=phone_number, name=name)
     db_session.add(user)
     await db_session.commit()
+
+
+async def get_user_by_id(db_session: AsyncSession, user_id: int) -> User | None:
+    result = await db_session.execute(select(User).filter(User.id == user_id))
+    return result
