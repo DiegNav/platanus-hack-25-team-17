@@ -1,6 +1,7 @@
 """Session model definition."""
 
 import enum
+import uuid
 from sqlalchemy import String, Table, Column, ForeignKey, Enum, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -33,14 +34,12 @@ class Session(Base):
 
     __tablename__ = "sessions"
 
-    id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, index=True, server_default=text("gen_random_uuid()")
-    )
+    id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid.uuid4)
     description: Mapped[str] = mapped_column(String(500), nullable=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     status: Mapped[SessionStatus] = mapped_column(Enum(SessionStatus, name="session_status"), nullable=False)
 
     # Relationships
     users: Mapped[list["User"]] = relationship(secondary=session_users, back_populates="sessions")
-    owner: Mapped["User"] = relationship("User", back_populates="sessions", foreign_keys=[owner_id])
+    owner: Mapped["User"] = relationship("User", foreign_keys=[owner_id])
     invoices: Mapped[list["Invoice"]] = relationship("Invoice", back_populates="session")

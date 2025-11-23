@@ -1,0 +1,277 @@
+"""Script to seed the database with fake data.
+
+This script generates fake data for all models in the database,
+respecting all relationships and constraints.
+
+Usage:
+    python -m app.database.seed_fake_data
+"""
+
+import uuid
+from faker import Faker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.database.models import User, Session, Invoice, Item, Payment
+from app.database.models.session import SessionStatus
+
+# Initialize Faker
+fake = Faker()
+
+
+def create_fake_users(db_session, num_users=10):
+    """Create fake users.
+
+    Args:
+        db_session: SQLAlchemy database session
+        num_users: Number of users to create
+
+    Returns:
+        List of created User objects
+    """
+    users = []
+    for _ in range(num_users):
+        user = User(
+            name=fake.name(),
+            phone_number=fake.phone_number()[:50]  # Ensure it fits within 50 chars
+        )
+        db_session.add(user)
+        users.append(user)
+    
+    db_session.commit()
+    print(f"✓ Created {num_users} users")
+    return users
+
+
+def create_fake_sessions(db_session, users, num_sessions=5):
+    """Create fake sessions with users.
+
+    Args:
+        db_session: SQLAlchemy database session
+        users: List of User objects to associate with sessions
+        num_sessions: Number of sessions to create
+
+    Returns:
+        List of created Session objects
+    """
+    sessions = []
+    for _ in range(num_sessions):
+        # Select a random owner and 2-5 participants
+        owner = fake.random_element(users)
+        num_participants = fake.random_int(min=2, max=min(5, len(users)))
+        participants = fake.random_elements(users, length=num_participants, unique=True)
+        
+        # Ensure owner is in participants
+        if owner not in participants:
+            participants = list(participants)
+            participants[0] = owner
+        
+        session = Session(
+            id=uuid.uuid4(),
+            description=fake.sentence(nb_words=6),
+            owner_id=owner.id,
+            status=fake.random_element([SessionStatus.ACTIVE, SessionStatus.CLOSED])
+        )
+        
+        # Add participants to session
+        session.users = participants
+        
+        db_session.add(session)
+        sessions.append(session)
+    
+    db_session.commit()
+    print(f"✓ Created {num_sessions} sessions")
+    return sessions
+
+
+def create_fake_invoices(db_session, users, sessions, num_invoices=15):
+    """Create fake invoices.
+
+    Args:
+        db_session: SQLAlchemy database session
+        users: List of User objects
+        sessions: List of Session objects
+        num_invoices: Number of invoices to create
+
+    Returns:
+        List of created Invoice objects
+    """
+    invoices = []
+    for _ in range(num_invoices):
+        session = fake.random_element(sessions)
+        # Payer should be one of the session users
+        payer = fake.random_element(session.users)
+        
+        invoice = Invoice(
+            description=fake.sentence(nb_words=5),
+            total=0.0,  # Will be calculated from items
+            pending_amount=0.0,  # Will be calculated from items
+            payer_id=payer.id,
+            session_id=session.id
+        )
+        db_session.add(invoice)
+        invoices.append(invoice)
+    
+    db_session.commit()
+    print(f"✓ Created {num_invoices} invoices")
+    return invoices
+
+
+def create_fake_items(db_session, invoices, users, items_per_invoice_range=(2, 8)):
+    """Create fake items for invoices.
+
+    Args:
+        db_session: SQLAlchemy database session
+        invoices: List of Invoice objects
+        users: List of User objects
+        items_per_invoice_range: Tuple (min, max) items per invoice
+
+    Returns:
+        List of created Item objects
+    """
+    items = []
+    for invoice in invoices:
+        num_items = fake.random_int(min=items_per_invoice_range[0], max=items_per_invoice_range[1])
+        invoice_total = 0.0
+        invoice_pending = 0.0
+        
+        for _ in range(num_items):
+            # Debtor should be one of the session users
+            debtor = fake.random_element(invoice.session.users)
+            
+            unit_price = round(fake.random_number(digits=4) / 100, 2)  # Price between 0 and 99.99
+            tip = round(fake.random_int(min=0, max=20) / 100, 4)  # Tip between 0% and 20%
+            tip_amount = unit_price * tip
+            total = round(unit_price + tip_amount, 2)
+            
+            # Randomly decide if item is paid
+            is_paid = fake.boolean(chance_of_getting_true=30)
+            paid_amount = total if is_paid else round(fake.random_int(min=0, max=int(total * 100)) / 100, 2)
+            
+            item = Item(
+                invoice_id=invoice.id,
+                debtor_id=debtor.id,
+                unit_price=unit_price,
+                paid_amount=paid_amount,
+                tip=tip,
+                total=total,
+                is_paid=is_paid,
+                description=fake.sentence(nb_words=3)
+            )
+            
+            db_session.add(item)
+            items.append(item)
+            
+            invoice_total += total
+            if not is_paid:
+                invoice_pending += (total - paid_amount)
+        
+        # Update invoice totals
+        invoice.total = round(invoice_total, 2)
+        invoice.pending_amount = round(invoice_pending, 2)
+    
+    db_session.commit()
+    print(f"✓ Created {len(items)} items across {len(invoices)} invoices")
+    return items
+
+
+def create_fake_payments(db_session, users, items, num_payments=20):
+    """Create fake payments between users.
+
+    Args:
+        db_session: SQLAlchemy database session
+        users: List of User objects
+        items: List of Item objects
+        num_payments: Number of payments to create
+
+    Returns:
+        List of created Payment objects
+    """
+    payments = []
+    
+    # Get items that have some payment (paid_amount > 0)
+    paid_items = [item for item in items if item.paid_amount > 0]
+    
+    for _ in range(num_payments):
+        payer = fake.random_element(users)
+        receiver = fake.random_element(users)
+        
+        # Ensure payer and receiver are different
+        while receiver.id == payer.id:
+            receiver = fake.random_element(users)
+        
+        amount = round(fake.random_number(digits=4) / 100, 2)
+        
+        payment = Payment(
+            payer_id=payer.id,
+            receiver_id=receiver.id,
+            amount=amount
+        )
+        
+        db_session.add(payment)
+        db_session.flush()  # To get the payment id
+        
+        # Optionally associate some items with this payment
+        if paid_items:
+            num_items_to_link = fake.random_int(min=0, max=min(3, len(paid_items)))
+            items_to_link = fake.random_elements(paid_items, length=num_items_to_link, unique=True)
+            
+            for item in items_to_link:
+                if item.payment_id is None:  # Only if not already linked
+                    item.payment_id = payment.id
+        
+        payments.append(payment)
+    
+    db_session.commit()
+    print(f"✓ Created {num_payments} payments")
+    return payments
+
+
+def seed_database(db_url: str):
+    """Seed the database with fake data.
+
+    Args:
+        db_url: Database connection URL
+    """
+    print("\n🌱 Starting database seeding...\n")
+    
+    # Create engine and session
+    engine = create_engine(db_url)
+    SessionLocal = sessionmaker(bind=engine)
+    db_session = SessionLocal()
+    
+    try:
+        # Create fake data in order (respecting relationships)
+        users = create_fake_users(db_session, num_users=15)
+        sessions = create_fake_sessions(db_session, users, num_sessions=7)
+        invoices = create_fake_invoices(db_session, users, sessions, num_invoices=20)
+        items = create_fake_items(db_session, invoices, users, items_per_invoice_range=(3, 10))
+        payments = create_fake_payments(db_session, users, items, num_payments=25)
+        
+        print("\n✅ Database seeding completed successfully!\n")
+        print("Summary:")
+        print(f"  - Users: {len(users)}")
+        print(f"  - Sessions: {len(sessions)}")
+        print(f"  - Invoices: {len(invoices)}")
+        print(f"  - Items: {len(items)}")
+        print(f"  - Payments: {len(payments)}")
+        
+    except Exception as e:
+        print(f"\n❌ Error seeding database: {e}")
+        db_session.rollback()
+        raise
+    finally:
+        db_session.close()
+
+
+if __name__ == "__main__":
+    # Use settings from the app configuration
+    from app.config.settings import settings
+    
+    db_url = str(settings.DATABASE_URL)
+    
+    masked_url = db_url.split('@')[1] if '@' in db_url else db_url
+    print(f"Database URL: {masked_url}")
+    print(f"Environment: {settings.ENVIRONMENT}")
+    seed_database(db_url)
+

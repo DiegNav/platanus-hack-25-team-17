@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PaymentStatusBadge } from "@/components/payment-status-badge"
-import { mockSession, mockParticipants } from "@/lib/mockData"
+import { getSessionData } from "@/lib/api"
 
 interface PageProps {
   params: Promise<{
@@ -12,11 +12,34 @@ interface PageProps {
 export default async function SessionPage({ params }: PageProps) {
   const { sessionId } = await params
 
-  // Cálculos basados en los datos mock (luego reemplazar con datos reales)
-  const totalParticipantes = mockParticipants.length
-  const montoTotalReembolsado = mockParticipants.reduce((sum, p) => sum + p.montoReembolsadoEnEstaCompra, 0)
-  const tiempoPromedioGrupo =
-    mockParticipants.reduce((sum, p) => sum + p.tiempoPromedioTransferenciaHoras, 0) / mockParticipants.length
+  // Fetch real data from API
+  let sessionData
+  let participants: Array<{
+    id: string
+    nombre: string
+    montoReembolsadoEnEstaCompra: number
+    estadoPago: "pagado" | "pendiente" | "atrasado"
+  }> = []
+
+  try {
+    const data = await getSessionData(sessionId)
+    sessionData = data.sessionData
+    participants = data.participants
+  } catch (error) {
+    console.error("Error fetching session data:", error)
+    // Fallback to empty data
+    sessionData = {
+      sessionId,
+      tituloCompra: "Sesión no encontrada",
+      fecha: new Date().toLocaleDateString("es-CL"),
+      montoTotal: 0,
+    }
+  }
+
+  // Calculate statistics
+  const totalParticipantes = participants.length
+  const montoTotalReembolsado = participants.reduce((sum, p) => sum + p.montoReembolsadoEnEstaCompra, 0)
+  const saldoFaltante = sessionData.montoTotal - montoTotalReembolsado
 
   // Formatear moneda CLP
   const formatCLP = (amount: number) => {
@@ -27,30 +50,19 @@ export default async function SessionPage({ params }: PageProps) {
     }).format(amount)
   }
 
-  // Formatear tiempo en horas
-  const formatHours = (hours: number) => {
-    const fullHours = Math.floor(hours)
-    const minutes = Math.round((hours - fullHours) * 60)
-
-    if (minutes === 0) {
-      return `${fullHours}h`
-    }
-    return `${fullHours}h ${minutes}min`
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">{mockSession.tituloCompra}</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{sessionData.tituloCompra}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
-            <span>{mockSession.fecha}</span>
+            <span>{sessionData.fecha}</span>
             <span className="hidden sm:inline">•</span>
             <span className="font-mono text-xs">ID: {sessionId.slice(0, 8)}...</span>
           </div>
           <div className="mt-4">
-            <span className="text-4xl font-bold text-gray-900">{formatCLP(mockSession.montoTotal)}</span>
+            <span className="text-4xl font-bold text-gray-900">{formatCLP(sessionData.montoTotal)}</span>
             <span className="ml-2 text-sm text-gray-600">Total de la compra</span>
           </div>
         </div>
@@ -75,12 +87,12 @@ export default async function SessionPage({ params }: PageProps) {
             </CardContent>
           </Card>
 
-          <Card className="sm:col-span-2 lg:col-span-1">
+          <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Tiempo Promedio de Transferencia</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Saldo Faltante</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{formatHours(tiempoPromedioGrupo)}</div>
+              <div className="text-3xl font-bold text-gray-900">{formatCLP(saldoFaltante)}</div>
             </CardContent>
           </Card>
         </div>
@@ -96,39 +108,34 @@ export default async function SessionPage({ params }: PageProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nombre</TableHead>
-                    <TableHead className="text-center">Veces Juntos</TableHead>
-                    <TableHead className="text-center">Tiempo Promedio</TableHead>
                     <TableHead className="text-right">Monto Reembolsado</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockParticipants.map((participante) => (
-                    <TableRow key={participante.id}>
-                      <TableCell className="font-medium">{participante.nombre}</TableCell>
-                      <TableCell className="text-center">{participante.vecesJuntos}</TableCell>
-                      <TableCell className="text-center">
-                        {formatHours(participante.tiempoPromedioTransferenciaHoras)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCLP(participante.montoReembolsadoEnEstaCompra)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <PaymentStatusBadge status={participante.estadoPago} />
+                  {participants.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-gray-500">
+                        No hay participantes en esta sesión
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    participants.map((participante) => (
+                      <TableRow key={participante.id}>
+                        <TableCell className="font-medium">{participante.nombre}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCLP(participante.montoReembolsadoEnEstaCompra)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <PaymentStatusBadge status={participante.estadoPago} />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
 
-            {/* Nota sobre datos mock */}
-            <div className="mt-6 rounded-lg bg-blue-50 p-4">
-              <p className="text-sm text-blue-800">
-                <span className="font-semibold">Nota:</span> Estos datos son mockeados. Luego se conectarán a la base de
-                datos real.
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>
