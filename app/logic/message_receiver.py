@@ -234,13 +234,111 @@ async def handle_transfer(db_session: AsyncSession, transfer: TransferExtraction
         send_text_message(sender, f"❌ Error al procesar el pago: {str(e)}. Por favor, intenta nuevamente.")
 
 
-async def handle_image_message(db_session: AsyncSession, image: KapsoImage, sender: str) -> None:
+async def handle_payment_with_context(
+    db_session: AsyncSession, 
+    image: KapsoImage, 
+    sender: str,
+    context_message: str | None = None
+) -> None:
+    """Handle payment with optional context message.
+    
+    When user sends a message like "pagué una bebida y una pizza" with a transfer image,
+    this function:
+    1. Extracts payment intent from the message
+    2. Processes the image to get payment amount
+    3. Matches items using AI
+    4. Processes the payment with proper logic (exact/more/less)
+    
+    Args:
+        db_session: Database session
+        image: Payment proof image
+        sender: User phone number
+        context_message: Optional message describing what was paid
+    """
+    from app.services.payment_agent import extract_payment_intent_from_message
+    from app.services.payment_matcher import match_payment_to_items
+    from app.database.sql.payment_processing import process_payment_result, get_payment_summary
+    
+    # Download and process image
     image_content, mime_type = await download_image_from_url(image.link)
     ocr_result = await scan_receipt(image_content, mime_type)
-    if ocr_result.document_type == ReceiptDocumentType.RECEIPT:
-        await handle_receipt(db_session, ocr_result.receipt, sender)
-    elif ocr_result.document_type == ReceiptDocumentType.TRANSFER:
-        await handle_transfer(db_session, ocr_result.transfer, sender)
+    
+    # Only handle transfer documents for payment matching
+    if ocr_result.document_type != ReceiptDocumentType.TRANSFER:
+        # Fall back to regular receipt handling
+        if ocr_result.document_type == ReceiptDocumentType.RECEIPT:
+            await handle_receipt(db_session, ocr_result.receipt, sender)
+        return
+    
+    transfer = ocr_result.transfer
+    
+    # If no context message, use old flow
+    if not context_message:
+        await handle_transfer(db_session, transfer, sender)
+        return
+    
+    # Check if user has active session
+    if not await check_user_has_active_session(db_session, sender):
+        send_text_message(sender, NO_ACTIVE_SESSION_MESSAGE)
+        return
+    
+    try:
+        # Extract payment intent from message
+        logging.info(f"Extracting payment intent from message: {context_message}")
+        payment_intent = await extract_payment_intent_from_message(context_message)
+        
+        if not payment_intent.is_payment or not payment_intent.items_paid:
+            logging.warning("Message is not a payment intent, falling back to old flow")
+            await handle_transfer(db_session, transfer, sender)
+            return
+        
+        logging.info(f"Payment intent extracted: {payment_intent}")
+        
+        # Match items using AI
+        payment_match = await match_payment_to_items(
+            db_session,
+            sender,
+            payment_intent,
+            transfer.amount,
+        )
+        
+        logging.info(f"Payment match result: {payment_match}")
+        
+        if not payment_match.matched_items:
+            send_text_message(
+                sender,
+                "❌ No se pudieron identificar los items mencionados. "
+                "Por favor, verifica que los items existan en la sesión activa."
+            )
+            return
+        
+        # Process payment
+        paid_items, remainder_item = await process_payment_result(
+            db_session,
+            payment_match,
+            sender,
+            payment_description=f"Pago: {context_message[:100]}",
+        )
+        
+        # Send summary
+        summary = await get_payment_summary(db_session, paid_items, remainder_item)
+        send_text_message(sender, summary)
+        
+    except Exception as e:
+        logging.error(f"Error processing payment with context: {e}", exc_info=True)
+        send_text_message(
+            sender,
+            f"❌ Error al procesar el pago: {str(e)}. "
+            "Por favor, intenta nuevamente o contacta soporte."
+        )
+
+
+async def handle_image_message(db_session: AsyncSession, image: KapsoImage, sender: str) -> None:
+    """Handle image message without context.
+    
+    For backward compatibility, routes to appropriate handler.
+    """
+    await handle_payment_with_context(db_session, image, sender, context_message=None)
 
 
 async def handle_voice_message(db_session: AsyncSession, conversation: KapsoConversation, sender: str) -> None:

@@ -10,8 +10,10 @@ import uuid
 async def get_active_session_by_user_id(db_session: AsyncSession, user_id: int) -> Session | None:
     result = await db_session.execute(
         select(Session)
+        .outerjoin(session_users, Session.id == session_users.c.session_id)
         .filter(or_(Session.owner_id == user_id, session_users.c.user_id == user_id))
         .filter(Session.status == SessionStatus.ACTIVE)
+        .distinct()
     )
     return result.scalar_one_or_none()
 

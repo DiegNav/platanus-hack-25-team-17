@@ -9,10 +9,11 @@ from app.config.settings import settings
 
 def reset_database():
     """Drop all tables and reset the database."""
-    engine = create_engine(str(settings.DATABASE_URL))
+    database_url = str(settings.DATABASE_URL).replace("postgresql+asyncpg://", "postgresql://")
+    engine = create_engine(database_url)
     
     print("⚠️  WARNING: This will DELETE ALL DATA in the database!")
-    print(f"Database: {str(settings.DATABASE_URL).split('@')[1] if '@' in str(settings.DATABASE_URL) else settings.DATABASE_URL}")
+    print(f"Database: {database_url.split('@')[1] if '@' in database_url else database_url}")
     
     with engine.connect() as conn:
         # Drop all tables and types

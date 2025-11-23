@@ -24,20 +24,20 @@ async def create_invoice_with_items(
     db_session.add(invoice)
     await db_session.flush()
     items = []
-    for item in receipt.items:
-        for _ in range(item.count):
-            item = Item(
-                description=item.description,
+    for receipt_item in receipt.items:
+        for _ in range(receipt_item.count):
+            db_item = Item(
+                description=receipt_item.description,
                 invoice_id=invoice.id,
                 debtor_id=None,
-                unit_price=item.amount,
+                unit_price=receipt_item.amount,
                 paid_amount=0,
                 tip=tip,
-                total=item.amount * (1 + tip),
+                total=receipt_item.amount * (1 + tip),
                 is_paid=False,
                 payment_id=None,
             )
-            db_session.add(item)
-            items.append(item)
+            db_session.add(db_item)
+            items.append(db_item)
     await db_session.commit()
     return invoice, items
